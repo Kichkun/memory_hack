@@ -35,15 +35,25 @@ class MoscowParser(AbstractParser):
         super().__init__(dir_to_save, storage_model)
         self._people_urls = people_urls
 
-    def parse(self, cool_down=0.3):
-        print(self.__extract_data('https://www.polkmoskva.ru/people/1052951/'))
-
+    def parse(self):
         if not self._people_urls:
             self._people_urls = MoscowParser.extract_people_pages()
-        for i, url in tqdm.tqdm(enumerate(self._people_urls)):
+
+        for url in self._people_urls:
             extracted_data = self.__extract_data(url)
-            self.storage_model.store_record(extracted_data, file_name=f'{i}.json')
-            if i % 5 == 0:
+            self.storage_model.store_record(extracted_data)
+
+    def parse_ad_hoc(self, start_from_page, end_with_page, cool_down=0.3):
+        self._people_urls = []
+
+        for i in tqdm.tqdm(range(start_from_page, end_with_page+1)):
+            url = MoscowParser.__URL_PEOPLE_SEARCH_TEMPLATE.format(i)
+            content = requests.get(url).content
+            tree = html.fromstring(content.decode())
+            links = tree.xpath('//div[@class="b-veteranList-item__headTitle"]/a')
+            self._people_urls = [urljoin(MoscowParser.__URL_BASE, x.get('href')) for x in links]
+            self.parse()
+            if cool_down > 0:
                 time.sleep(cool_down)
 
     def __extract_data(self, url):

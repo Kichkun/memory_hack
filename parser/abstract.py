@@ -9,5 +9,5 @@ class AbstractParser(abc.ABC):
         self.storage_model = storage_model
 
     @abc.abstractmethod
-    def parse(self, cool_down=0.3):
+    def parse(self):
         pass

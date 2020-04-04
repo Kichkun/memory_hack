@@ -17,7 +17,8 @@ class JsonStorage(AbstractStorage):
     def __init__(self, dir_to_save_in: str):
         self.dir_to_save_in = dir_to_save_in
 
-    def store_record(self, record: tp.Dict[tp.Any, tp.Any], file_name: str):
+    def store_record(self, record: tp.Dict[tp.Any, tp.Any]):
+        file_name = f'{record["name"]}.json'
         with open(os.path.join(self.dir_to_save_in, file_name), 'w', encoding='utf-8') as f:
             json.dump(record, f, ensure_ascii=False, indent=4)
 
