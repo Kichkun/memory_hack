@@ -56,6 +56,7 @@ class MoscowParser(AbstractParser):
         date_element = tree.xpath("//div[@class='b-veteranInfo__birthday']")
         birth_element = tree.xpath("//div[@class='b-veteranInfo__item b-veteranInfo__birthplace']")
         return {
+            'source_url': url,
             'name': name,
             'date': date_element[0].text_content().strip() if date_element else None,
             'place_of_birth': birth_element[0].text_content().replace('Меcто рождения:', '').strip()

@@ -4,6 +4,7 @@ from typing import Dict, List
 
 @dataclass
 class MoscowEntity:
+    source_url: str
     name: str
     date: str
     place_of_birth: str
