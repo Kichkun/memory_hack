@@ -6,7 +6,7 @@ import tqdm
 import time
 from urllib.parse import urljoin
 
-from parser.abstract import AbstractParser
+from parsing.abstract import AbstractParser
 from storage.json_storage import JsonStorage
 
 import random
