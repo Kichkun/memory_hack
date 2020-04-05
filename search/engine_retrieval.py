@@ -37,8 +37,10 @@ class EngineRetrieval:
                                       threshold=EngineRetrieval.__sim_img_distance)
 
     def __name_matching(self, name: str):
-        similarities = [textdistance.jaccard.normalized_similarity(name, x) for x in self._preprocessed_names]
+        name = name.lower()
+        similarities = [textdistance.levenshtein.normalized_similarity(name, x) for x in self._preprocessed_names]
         max_idx = np.argmax(similarities)
+
         if similarities[max_idx] >= EngineRetrieval.__sim_jaccard_threshold:
             return max_idx
         return None
@@ -53,7 +55,7 @@ if __name__ == '__main__':
             objects.append(GeneralEntity(**json.load(read_file)))
     engine = EngineRetrieval(data=objects)
 
-    example_image = 'D:\\coding\\memory_hack\\data_20000_30000/Лапин Петр Иванович.png'
-    entity = GeneralEntity(name='Лапин Петр', date='', source_url='', photo_path=example_image)
+    example_image = 'D:\coding\memory_hack\data_20000_30000//1283217w940h615auto.jpg'
+    entity = GeneralEntity(name='Логинова Раиса Сергевна', date='', source_url='', photo_path=example_image)
 
     print(engine.matcher(entity))
