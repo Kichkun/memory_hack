@@ -7,25 +7,21 @@ import dlib
 import cv2
 import random
 
-def crop_chips(image, user_id):
+def crop_chips(image, user_id, folder = './wow/'):
     detector = dlib.get_frontal_face_detector()
     predictor = dlib.shape_predictor('shape_predictor_68_face_landmarks.dat')
     fa = FaceAligner(predictor, desiredFaceWidth=256)
-    facerec = dlib.face_recognition_model_v1('dlib_face_recognition_resnet_model_v1.dat')
 
     image = imutils.resize(image, width=480)
 
     rects = detector(image, 1)
     if len(rects) < 1:
-        #cv2.imwrite(f"foo/{mark}/{user_id}_{frame}.png", image)
         return None
     descriptors = {}
     for i, rect in enumerate(rects):
         faceAligned = fa.align(image, image, rect)
-        shape = predictor(faceAligned, rect)
-        #descriptors[f'{user_id}_{i}'] = facerec.compute_face_descriptor(faceAligned, shape)
         descriptors[f'{user_id}_{i}'] = get_face_embeddings_from_image(faceAligned)
-        cv2.imwrite(f"./wow/faces/{user_id}_{i}.png", faceAligned)
+        cv2.imwrite(f"{folder}faces/{user_id}_{i}.png", faceAligned)
     return descriptors
 
 def get_face_embeddings_from_image(image, convert_to_rgb=False):
