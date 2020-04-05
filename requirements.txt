@@ -1,2 +1,5 @@
+textdistance
+tqdm
+numpy
 requests
 progressbar
