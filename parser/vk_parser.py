@@ -1,6 +1,12 @@
 import requests
+from json import JSONEncoder
+from PIL import Image
+from io import BytesIO
 import settings
+from crop import crop_chips, get_face_embeddings_from_image, calc_similarity
 import time
+import cv2
+import numpy as np
 import re
 import json
 from urllib.parse import unquote
@@ -10,6 +16,15 @@ from natasha import NamesExtractor, DatesExtractor
 import progressbar
 
 reg_ex = r'[\w-]+.(jpg|png|txt)'
+debug = True
+
+
+class NumpyArrayEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return JSONEncoder.default(self, obj)
+
 
 class VKSmallWrapper:
 
@@ -36,21 +51,23 @@ class VKSmallWrapper:
         except:
             raise ValueError("Response is not correct!")
 
+
 def calculate(count):
     count_array = []
     max_val = 100
     offset = 0
 
     while not count == 0:
-        if count>=max_val:
+        if count >= max_val:
             count_array.append([max_val, offset])
-            offset+=max_val
-            count-=max_val
+            offset += max_val
+            count -= max_val
         else:
             count_array.append([count, offset])
-            count-=count
-    
+            count -= count
+
     return count_array
+
 
 def download_images(name, links, texts):
     print(f"Start downloading {len(links)} images. Wait plz!\n")
@@ -59,13 +76,13 @@ def download_images(name, links, texts):
         progressbar.Bar(marker='#', left='[', right=']', fill='.'),
         progressbar.Percentage(),
     ]).start()
-    
+
     if not os.path.exists(f"output/"):
         os.makedirs(f"output/")
 
     l = 0
     for index, url in enumerate(links):
-        l+=1
+        l += 1
         bar.update(l)
         result = re.search(reg_ex, url)
         if result:
@@ -94,25 +111,45 @@ def download_images(name, links, texts):
                 start, stop = match.span
                 dates.append(texts[index][start:stop])
 
+
+
             dicti = {"img": f"output/{name}/{g}",
-                    "source_url": url,
-                    "dates": dates,
-                    "place": "toBeParsed",
-                    "author": "VK",
-                    "fulltext": texts[index],
-                    "names": names
-                    }
+                     "source_url": url,
+                     "dates": dates,
+                     "place": "toBeParsed",
+                     "author": "VK",
+                     "fulltext": texts[index],
+                     "names": names,
+                     "descriptors": ""
+                     }
+
+            with open(f"output/{name}/{g}", 'wb') as f:
+                img_bytes.raw.decode_content = True
+                shutil.copyfileobj(img_bytes.raw, f)
+
+            im = Image.open(f"output/{name}/{g}")
+            image = cv2.cvtColor(np.array(im), cv2.COLOR_RGB2BGR)
+
+            res = crop_chips(image, index)
+
+            if res != None:
+                if debug:
+                    print('faces correct')
+
+                im.save(f"output/{name}/{g}_face")
+                dicti['descriptors'] = json.dumps(res, cls=NumpyArrayEncoder)
 
             with open(f'output/{name}/{g}.json', 'w', encoding='utf-8') as outfile:
                 json.dump(dicti, outfile, indent=4, ensure_ascii=False)
 
-            with open(f"output/{name}/{g}", 'wb') as f:
-                img_bytes.raw.decode_content = True
-                shutil.copyfileobj(img_bytes.raw, f) 
+
+
+
         except Exception as e:
             print(f"ERROR: {e}")
 
     bar.finish()
+
 
 def parse_images_from_post(posts):
     links = []
@@ -125,7 +162,7 @@ def parse_images_from_post(posts):
         for att in post['attachments']:
             if not att['type'] == "photo":
                 continue
-            
+
             if "sizes" in att['photo']:
                 m_s_ind = -1
                 m_s_wid = 0
@@ -142,8 +179,9 @@ def parse_images_from_post(posts):
                 link = att['photo']['url']
                 links.append(link)
                 texts.append(post['text'])
-    
+
     return links, texts
+
 
 def get_links(vk_api, count, offset=None):
     counts = calculate(count)
@@ -151,12 +189,12 @@ def get_links(vk_api, count, offset=None):
 
     for count in counts:
         params = {
-            'owner_id': vk_api.group_id*-1,
+            'owner_id': vk_api.group_id * -1,
             'count': count[0],
             'filter': 'owner'
         }
         if offset:
-            params['offset'] = offset+count[1]
+            params['offset'] = offset + count[1]
         else:
             params['offset'] = count[1]
 
@@ -164,19 +202,21 @@ def get_links(vk_api, count, offset=None):
         l = parse_images_from_post(res)
         for li in l:
             links.append(li)
-        
+
         time.sleep(5)
-    
+
     return links
+
 
 if __name__ == "__main__":
     try:
-        v = settings.token
-        del(v)
+        v = token
+        del (v)
     except:
         raise ValueError("Token is not specified")
 
     group_id = input("Enter group id\n")
+
     if not group_id:
         print("Group id is not presented")
         exit()
@@ -184,7 +224,7 @@ if __name__ == "__main__":
         raise ValueError("Group id is not integer")
     else:
         group_id = int(group_id)
-    
+
     offset = input("Enter offset is need? (Just enter if not needed)\n")
     if offset and not offset.isdigit():
         raise ValueError("Offset is not integer")
@@ -205,5 +245,3 @@ if __name__ == "__main__":
 
     download_images(str(vk_api.group_id), plinks[0], plinks[1])
     print("Thanks for using that program!")
-
-
