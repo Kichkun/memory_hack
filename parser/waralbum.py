@@ -1,3 +1,7 @@
+from json import JSONEncoder
+
+import numpy as np
+import cv2
 from PIL import Image
 from io import BytesIO
 import json
@@ -5,18 +9,24 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 import tqdm
 import sys
+from crop import crop_chips, get_face_embeddings_from_image, calc_similarity
 
 chrome_options = Options()
 chrome_options.headless = True
-driver = webdriver.Chrome("PATH",
+driver = webdriver.Chrome("/home/ksihkun/.wdm/drivers/chromedriver/78.0.3904.105/linux64/chromedriver",
                           options=chrome_options)
 
-start = 348
-bias = 10
-debug = True
+start = 352
+bias = 300000
+debug = False
 root_url = 'http://waralbum.ru/'
 stop_words = ['немецких', 'Германии']
 
+class NumpyArrayEncoder(JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return JSONEncoder.default(self, obj)
 
 for i in tqdm.tqdm(range(start, start + bias), file = sys.stdout):
     out = {}
@@ -91,15 +101,27 @@ for i in tqdm.tqdm(range(start, start + bias), file = sys.stdout):
                     print(out)
                     if debug:
                         print('eth correct')
-                    path = f'./wow/{i}.json'
-                    with open(path, 'w', encoding='utf-8') as outfile:
-                        json.dump(out, outfile, ensure_ascii=False)
+
 
                     image_name = f'./wow/{i}.png'
 
                     driver.get(src_2)
                     png = driver.get_screenshot_as_png()
                     im = Image.open(BytesIO(png))
-                    im.save(image_name)
+                    image = cv2.cvtColor(np.array(im), cv2.COLOR_RGB2BGR)
+
+                    res = crop_chips(image, i)
+
+                    if res != None:
+                        if debug:
+                            print('faces correct')
+                        im.save(image_name)
+                        out['descriptors'] = json.dumps(res, cls=NumpyArrayEncoder)
+                        path = f'./wow/{i}.json'
+                        path_des = f'./wow/{i}_des.json'
+                        print(out)
+                        with open(path, 'w', encoding='utf-8') as outfile:
+                            json.dump(out, outfile, ensure_ascii=False)
+
     except:
         print('error', i)
