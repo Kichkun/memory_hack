@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional, Dict
 import requests
 from lxml import html
@@ -5,7 +6,7 @@ import tqdm
 import time
 from urllib.parse import urljoin
 
-from parser.abstract import AbstractParser
+from parsing.abstract import AbstractParser
 from storage.json_storage import JsonStorage
 
 import random
@@ -40,8 +41,13 @@ class MoscowParser(AbstractParser):
             self._people_urls = MoscowParser.extract_people_pages()
 
         for url in self._people_urls:
-            extracted_data = self.__extract_data(url)
-            self.storage_model.store_record(extracted_data)
+            try:
+                extracted_data = self.__extract_data(url)
+                self.storage_model.store_record(extracted_data)
+
+            except Exception:
+                continue
+        time.sleep(0.1)
 
     def parse_ad_hoc(self, start_from_page, end_with_page, cool_down=0.3):
         self._people_urls = []
@@ -126,9 +132,9 @@ class MoscowParser(AbstractParser):
 
 
 if __name__ == '__main__':
-    json_storage = JsonStorage('../data')
-    with open('../people_links_1_1016.txt', 'r', encoding='utf-8') as f:
-        data = f.read().split('\n')[:3]
+    abs_data_folder = os.path.abspath('./data_20000_30000')
 
-    parser = MoscowParser('../data/', json_storage, people_urls=data)
-    parser.parse()
+    json_storage = JsonStorage(abs_data_folder)
+
+    parser = MoscowParser(abs_data_folder, json_storage)
+    parser.parse_ad_hoc(start_from_page=1, end_with_page=1, cool_down=0.3)
