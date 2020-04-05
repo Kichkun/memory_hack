@@ -2,7 +2,7 @@ import requests
 from json import JSONEncoder
 from PIL import Image
 from io import BytesIO
-import settings
+#import settings
 from crop import crop_chips, get_face_embeddings_from_image, calc_similarity
 import time
 import cv2
@@ -14,6 +14,7 @@ import os
 import shutil
 from natasha import NamesExtractor, DatesExtractor
 import progressbar
+
 
 reg_ex = r'[\w-]+.(jpg|png|txt)'
 debug = True
@@ -94,6 +95,7 @@ def download_images(name, links, texts):
         try:
             if not os.path.exists(f"output/{name}/"):
                 os.makedirs(f"output/{name}")
+                os.makedirs(f"output/{name}/faces")
 
             extractor_names = NamesExtractor()
             matches_txt = extractor_names(texts[index])
@@ -111,16 +113,17 @@ def download_images(name, links, texts):
                 start, stop = match.span
                 dates.append(texts[index][start:stop])
 
-
-
-            dicti = {"img": f"output/{name}/{g}",
+            meta_dict = {
+                    "dates": dates,
+                    "author": "VK",
+                    "biography": texts[index],
+                    "names": names
+                    }
+            dicti = {"photo_path": f"output/{name}/{g}",
                      "source_url": url,
-                     "dates": dates,
-                     "place": "toBeParsed",
-                     "author": "VK",
-                     "fulltext": texts[index],
-                     "names": names,
-                     "descriptors": ""
+                     "date": dates[0],
+                     "facial_vector": "",
+                     "meta": meta_dict
                      }
 
             with open(f"output/{name}/{g}", 'wb') as f:
@@ -132,18 +135,14 @@ def download_images(name, links, texts):
 
             res = crop_chips(image, index)
 
-            if res != None:
+            if res[0] != None:
                 if debug:
                     print('faces correct')
+                cv2.imwrite(f"output/{name}/faces/face_{g}", res[1])
+                dicti['facial_vector'] = json.dumps(res[0], cls=NumpyArrayEncoder)
 
-                im.save(f"output/{name}/{g}_face")
-                dicti['descriptors'] = json.dumps(res, cls=NumpyArrayEncoder)
-
-            with open(f'output/{name}/{g}.json', 'w', encoding='utf-8') as outfile:
-                json.dump(dicti, outfile, indent=4, ensure_ascii=False)
-
-
-
+                with open(f'output/{name}/{g}.json', 'w', encoding='utf-8') as outfile:
+                    json.dump(dicti, outfile, indent=4, ensure_ascii=False)
 
         except Exception as e:
             print(f"ERROR: {e}")
@@ -240,7 +239,7 @@ if __name__ == "__main__":
     else:
         count = int(count)
 
-    vk_api = VKSmallWrapper(settings.token, group_id)
+    vk_api = VKSmallWrapper(token, group_id)
     plinks = get_links(vk_api, count, offset)
 
     download_images(str(vk_api.group_id), plinks[0], plinks[1])
